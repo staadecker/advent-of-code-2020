@@ -1,4 +1,8 @@
-FILE = "sample_input.txt"
+FILE = "input.txt"
+
+MONSTER = """                  # 
+#    ##    ##    ###
+ #  #  #  #  #  #   """
 
 
 class DirectionalEdge:
@@ -44,27 +48,32 @@ class Tile:
         i -= self.rotate
         return self.edges[i % 4]
 
-    def flip_over_y(self, arr):
-        return [row[::-1] for row in arr]
-
-    def rotate_right(self, arr):
-        new = []
-        for j in range(len(arr[0])):
-            new.append("".join([arr[i][j] for i in range(len(arr) - 1, -1, -1)]))
-        return new
-
     def get_content(self):
         new = self.content[:]
         for i in range(self.rotate):
-            new = self.rotate_right(new)
+            new = rotate_2d_right_string(new)
         if self.flipped_about_y:
-            new = self.flip_over_y(new)
+            new = [row[::-1] for row in new]
         if self.flipped_about_x:
             new = new[::-1]
         return new
 
     def has_flip(self):
         return self.flipped_about_x or self.flipped_about_y
+
+
+def rotate_2d_right_string(arr):
+    new = rotate_2d_right(arr)
+    return ["".join(row) for row in new]
+
+
+def rotate_2d_right(arr):
+    new = []
+    for j in range(len(arr[0])):
+        new.append(
+            [arr[i][j] for i in range(len(arr) - 1, -1, -1)]
+        )
+    return new
 
 
 def make_tile(tile_input):
@@ -98,13 +107,35 @@ def main():
     print([list(map(lambda t: t.flipped_about_x, row)) for row in grid])
     verify_grid(grid)
 
-    # grid = flip_2d_array(grid)
     grid_content = join_tiles(grid)
-
 
     print("\n".join(grid_content))
     print()
-    # print("\n".join(flip_2d_array(grid_content)))
+
+    monsters = make_monsters()
+    monster_grid = search_for_monsters(monsters, grid_content)
+
+    count = count_non_monsters(monster_grid, grid_content)
+
+    print(count)
+    # print_monster_grid(monster_grid)
+
+
+def count_non_monsters(monster_grid, grid_content):
+    count = 0
+    for i in range(len(monster_grid)):
+        for j in range(len(monster_grid[0])):
+            if grid_content[i][j] == "#" and not monster_grid[i][j]:
+                count += 1
+
+    return count
+
+
+def print_monster_grid(monster_grid):
+    for row in monster_grid:
+        for cell in row:
+            print("O" if cell else ".", end="")
+        print()
 
 
 def flip_2d_array(arr):
@@ -154,7 +185,7 @@ def generate_stats(tiles):
 def find_corner_tile(tiles):
     for tile in tiles:
         if tile.missing_edges == 2:
-            tile.flipped_about_x = True
+            # tile.flipped_about_x = True
             return tile
 
 
@@ -223,11 +254,54 @@ def join_tiles(grid):
             row = ""
             for j in range(width):
                 row += tiled_content[i][j][content_row]
-                # row += " "
             grid_content.append(row)
-        # grid_content.append(" ")
 
     return grid_content
+
+
+def make_monsters():
+    monsters = []
+
+    root_monster = list(map(lambda x: list(map(lambda e: e == "#", list(x))), MONSTER.split("\n")))
+
+    for c in [root_monster, root_monster[::-1]]:
+        for i in range(4):
+            monsters.append(c)
+            c = rotate_2d_right(c)
+
+    print(monsters)
+
+    return monsters
+
+
+def search_for_monsters(monsters, content):
+    width = len(content[0])
+    height = len(content)
+
+    monster_tracker_grid = [[False] * width for _ in range(height)]
+
+    for monster in monsters:
+        monster_height = len(monster)
+        monster_width = len(monster[0])
+        for i in range(0, height - monster_height):
+            for j in range(0, width - monster_width):
+                found = True
+                for m in range(monster_height):
+                    for n in range(monster_width):
+                        if monster[m][n]:
+                            if content[i + m][j + n] != "#":
+                                found = False
+                                break
+                    if not found:
+                        break
+                if found:
+                    for m in range(monster_height):
+                        for n in range(monster_width):
+                            if monster[m][n]:
+                                monster_tracker_grid[i + m][j + n] = True
+
+    print(monster_tracker_grid)
+    return monster_tracker_grid
 
 
 if __name__ == '__main__':
