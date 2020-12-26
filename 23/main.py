@@ -1,100 +1,79 @@
-class Cup:
-    def __init__(self, value, next):
+class Node:
+    def __init__(self, value):
         self.value = value
-        self.next = next
+        self.next = None
+
 
 class CircularArray:
     def __init__(self, arr):
-        self.len = len(arr)
-        self.arr = arr
-        self.mapping = {}
+        self.mapping = list(map(Node, range(1, 1000001)))
 
-        for i in range(len(arr)):
-            self.mapping[arr[i]] = i
+        previous = self.mapping[-1]  # use last to make it circular
 
-    def index(self, value):
-        return self.mapping[value]
+        for x in arr:
+            previous.next = self.find(x)
+            previous = self.find(x)
 
-    def move_forward(self, from_i, to_i):
-        value = self.arr.pop(from_i)
-        self.arr.insert(to_i, value)
+        for x in range(max(arr) + 1, 1000001):
+            previous.next = self.find(x)
+            previous = self.find(x)
 
-        for i in range(from_i, to_i):
-            self.mapping[self.arr[i]] -= 1
-        self.mapping[value] = to_i
+    def find(self, value):
+        return self.mapping[value - 1]
 
-    def move_back(self, from_i, to_i):
-        value = self.arr.pop(from_i)
-        self.arr.insert(to_i + 1, value)
-
-        for i in range(to_i + 2, from_i + 1):
-            self.mapping[self.arr[i]] += 1
-        self.mapping[value] = to_i + 1
-
-    def move_one(self, from_i, to_i):
-        self.move_forward(from_i, to_i) if from_i < to_i else self.move_back(from_i, to_i)
-
-    def move_three(self, from_i, to_i):
-        offset = 0
-        for _ in range(3):
-            self.move_one(from_i % self.len, to_i % self.len)
-            if from_i > to_i:
-                from_i = (from_i + 1) % self.len
-                to_i = (to_i + 1) % self.len
-        self.verify()
-
-    def __getitem__(self, item):
-        return self.arr[item]
-
-    def verify(self):
-        for i, x in enumerate(self.arr):
-            if self.mapping[x] != i:
-                raise ValueError(f"Incorrect value for {x} at {i}")
-        return True
+    def format(self):
+        output = ""
+        cur = self.find(1).next
+        while cur.value != 1:
+            output += str(cur.value) + ","
+            cur = cur.next
+        return output
 
 
 class Game:
     def __init__(self, cups):
         self.cups = CircularArray(cups)
-        self.current_cup = cups[0]
+        self.current_cup = self.cups.find(cups[0])
         self.smallest_cup = min(cups)
-        self.largest_cup = max(cups)
+        self.largest_cup = 1000000
         self.num_cups = len(cups)
-
-    def play_turn(self):
-        to_remove_i = self.cups.index(self.current_cup) + 1
-        destination_value = self.current_cup
-
-        # Find destination
-        while True:
-            destination_value -= 1
-            if destination_value < self.smallest_cup:
-                destination_value = self.largest_cup
-
-            destination_index = self.cups.index(destination_value)
-            if to_remove_i <= self.num_cups - 3 and to_remove_i <= destination_index < to_remove_i + 3:
-                continue
-            elif to_remove_i > self.num_cups - 3:
-                if destination_index >= to_remove_i:
-                    continue
-                if destination_index < (to_remove_i + 3) % self.num_cups:
-                    continue
-
-            break
-
-        # print(self.current_cup, destination_value, self.cups.arr)
-        self.cups.move_three(to_remove_i, destination_index)
-        self.current_cup = self.cups[(self.cups.index(self.current_cup) + 1) % self.num_cups]
 
     def play(self, turns):
         for _ in range(turns):
-            self.play_turn()
+            first_cup = self.current_cup.next
+            second_cup = first_cup.next
+            third_cup = second_cup.next
+            removed_cup_values = (first_cup.value, second_cup.value, third_cup.value)
+            destination_value = self.current_cup.value - 1
+
+            # Find destination
+            while True:
+                if destination_value < self.smallest_cup:
+                    destination_value = self.largest_cup
+
+                if destination_value not in removed_cup_values:
+                    break
+
+                destination_value -= 1
+
+            # print(self.current_cup.value, destination_value, self.cups.format())
+            destination_cup = self.cups.find(destination_value)
+            self.current_cup.next = third_cup.next
+            third_cup.next = destination_cup.next
+            destination_cup.next = first_cup
+
+            # Increment
+            self.current_cup = self.current_cup.next
 
 
 def main(filename):
     game = read_input(filename)
-    game.play(10)
-    print(game.cups.arr)
+    game.play(10000000)
+    # print(game.cups.format())
+    first_cup = game.cups.find(1).next
+    value1 = first_cup.value
+    value2 = first_cup.next.value
+    print(value1 * value2, value1, value2)
 
 
 def read_input(filename):
@@ -104,5 +83,5 @@ def read_input(filename):
 
 
 if __name__ == '__main__':
-    filename = "sample_input.txt"
+    filename = "input.txt"
     main(filename)
